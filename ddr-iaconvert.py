@@ -34,7 +34,7 @@ import csv
 import converters
 
 def load_data(csvpath,data):
-    csvfile = open(csvpath, 'rb')
+    csvfile = open(csvpath, 'r')
     csvreader = csv.DictReader(csvfile)
     for row in csvreader:
         data.append(row)
@@ -77,17 +77,8 @@ def generate_link_text(parentid,segnumber,totalsegs):
 
 # Main
 def parseCreators(rawcreators):
-    creators = {}
-    for kv in rawcreators.split(';'):
-        namepart
+    creators = converters.text_to_rolepeople(rawcreators)
     return creators
-
-def getCollection(isSegment,id):
-    if isSegment:
-        collection = id[:id.rfind('-')]
-    else:
-        collection = 'Densho'
-    return collection
 
 def getMediaType(mimetype):
     mediatypemap = {
@@ -99,28 +90,45 @@ def getMediaType(mimetype):
     }
     return mediatypemap.get(mimetype.split('/')[0])
 
-def getDescription(isSegment,identifier,descrip,location,creators,sort):
+def getDescription(isSegment,identifier,descrip,location,segnum,totalsegs):
     description = ''
+    sequenceinfo = ''
     if isSegment:
-        totalsegs = ''
-        sequenceinfo = 'Segment ' + segno + ' of ' + totalsegs
-        linktext = generate_link_text(collection,segno,totalsegs)
-    denshoboilerplate = "See this item in the <a href=\"https://ddr.densho.org/\" target=\"blank\">Densho Digital Repository</a> at: <a href=\"https://ddr.densho.org/" + identifier  + "/\" target=\"_blank\">https://ddr.densho.org/" + identifier + '/</a>.'
-    description = 'Interview location: ' + location + '<p>' + descrip +'<p>' + sequenceinfo + '<p>' + linktext + '<p>' + denshoboilerplate
+        sequenceinfo = 'Segment {} of {}<p>{}<p>'.format(segnum,str(totalsegs),generate_link_text(identifier[:identifier.rfind('-')],segnum,totalsegs))
+    locationinfo = 'Interview location: {}'.format(location) if isSegment else 'Location: {}'.format(location)
+    denshoboilerplate = 'See this item in the <a href=\"https://ddr.densho.org/\" target=\"blank\" rel=\"nofollow\">Densho Digital Repository</a> at: <a href=\"https://ddr.densho.org/{}/\" target=\"_blank\" rel=\"nofollow\">https://ddr.densho.org/{}/</a>.'.format(identifier,identifier)
+    description = locationinfo + descrip +'<p>' + sequenceinfo + denshoboilerplate
  
     return description
-    
+
+def getCreators(creatorsdata):
+    creators = ''
+    for i, c in enumerate(creatorsdata):
+        creators += '{}: {}{}'.format(c['role'].capitalize(),c['namepart'],'' if i == (len(creatorsdata) - 1) else ', ')
+    return creators
+
 def getCredits(personnel):
     credits = ''
-
+    for i, c in enumerate(personnel):
+        credits += '{}: {}{}'.format(c['role'].capitalize(),c['namepart'],'' if i == (len(personnel) - 1) else ', ')
     return credits
 
 def getLicense(code):
-    licenseurl =''
     if code == 'cc':
         licenseurl = 'https://creativecommons.org/licenses/by-nc-sa/4.0/'
+    elif code == 'pdm':
+        licenseurl = 'http://creativecommons.org/publicdomain/mark/1.0/'
+    else:
+        licenseurl =''
+
     return licenseurl
 
+def getFirstFacility(rawfacilities):
+    facility = ''
+    facilitydata = converters.text_to_listofdicts(rawfacilities)
+    if facilitydata:
+        facility = facilitydata[0]['term']
+    return facility
 
 
 def doConvert(entcsv,filecsv):
@@ -140,24 +148,33 @@ def doConvert(entcsv,filecsv):
             if f['id'] in entities_by_ddrid:
                 ent = entities_by_ddrid[f['id']]
                 identifier = ent['id']
-                creators_parsed = {}
+                interviewid = ''
+                creators_parsed = parseCreators(ent['creators'])
+                totalsegs = 0
                 isSegment = True if ent['format'] == 'vh' else False
                 if isSegment:
-                    parentid = entities_by_ddrid[f['id'][:f['id']]]
-                    creators_parsed = parseCreators(ent['creators'])
+                    #get the interview id
+                    interviewid = entities_by_ddrid[f['id'][:f['id'].rfind('-')]]
+                    #get segment info
+                    for s in entities_by_ddrid:
+                        if s.key.startsWith(interviewid):
+                            totalsegs +=1
+                    
                 filename = '{}-{}-{}{}'.format(ent['id'],f['role'],f['sha1'][:10],f['basename_orig'][f['basename_orig'].rfind('.'):])
-                collection = getCollection(isSegment,ent['id'])
+                #note this is the IA collection bucket; not the DDR collection
+                collection = interviewid if isSegment else 'Densho'
                 mediatype = getMediaType(f['mimetype'])
-                description = getDescription(isSegment, ent['id'],ent['description'],ent['location'],creators_parsed,ent['sort'])
+                description = getDescription(isSegment, ent['id'],ent['description'],ent['location'],ent['sort'],totalsegs)
                 title = ent['title']
                 contributor = ent['contributor']
-                creator = ''
+                creator = getCreators(creators_parsed)
                 date = ent['creation']
                 subject0 = 'Japanese Americans'
                 subject1 = 'Oral history'
-                subject2 = ''
+                #if entity has facility, get the first one
+                subject2 = getFirstFacility(ent['facility'])
                 licenseurl = getLicense(ent['rights'])
-                credits = getCredits(ent['creators'])
+                credits = getCredits(creators_parsed)
                 runtime = ent['extent']
                 
                 print('Results: {}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n'.format(identifier,filename,collection,mediatype,description,title,contributor,creator,date,subject0,subject1,subject2,licenseurl,credits,runtime))
