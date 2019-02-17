@@ -97,7 +97,7 @@ def getDescription(isSegment,identifier,descrip,location,segnum,totalsegs):
         sequenceinfo = 'Segment {} of {}<p>{}<p>'.format(segnum,str(totalsegs),generate_link_text(identifier[:identifier.rfind('-')],segnum,totalsegs))
     locationinfo = 'Interview location: {}'.format(location) if isSegment else 'Location: {}'.format(location)
     denshoboilerplate = 'See this item in the <a href=\"https://ddr.densho.org/\" target=\"blank\" rel=\"nofollow\">Densho Digital Repository</a> at: <a href=\"https://ddr.densho.org/{}/\" target=\"_blank\" rel=\"nofollow\">https://ddr.densho.org/{}/</a>.'.format(identifier,identifier)
-    description = locationinfo + descrip +'<p>' + sequenceinfo + denshoboilerplate
+    description = locationinfo + '<p>' + descrip + '<p>' + sequenceinfo + denshoboilerplate
  
     return description
 
@@ -131,7 +131,7 @@ def getFirstFacility(rawfacilities):
     return facility
 
 
-def doConvert(entcsv,filecsv):
+def doConvert(entcsv,filecsv,outputpath,prep_binaries):
     entdata = []
     load_data(entcsv,entdata)
     filedata = []
@@ -142,11 +142,38 @@ def doConvert(entcsv,filecsv):
     
     entities_by_ddrid = build_dict(entdata,key="id")
     
+    #set up output csv; write headers
+    outputfile = os.path.join(os.path.abspath(outputpath),'{:%Y%m%d-%H%M%S}-iaconvert.csv'.format(datetime.datetime.now()))
+    odatafile = open(outputfile,'w')
+    outputwriter = csv.writer(odatafile)
+    outputwriter.writerow(['identifier',
+                            'file',
+                            'collection',
+                            'mediatype',
+                            'description',
+                            'title',
+                            'contributor',
+                            'creator',
+                            'date',
+                            'subject[0]',
+                            'subject[1]',
+                            'subject[2]',
+                            'licenseurl',
+                            'credits',
+                            'runtime'])
+    odatafile.close()
+
     #iterate through files
     for f in filedata:
-        if f['external'] == '1':
-            if f['id'] in entities_by_ddrid:
-                ent = entities_by_ddrid[f['id']]
+         if f['external'] == '1':
+            if 'mezzanine' in f['id'] or 'master' in f['id'] or 'transcript' in f['id']:
+                ddrid = f['id'][:f['id'].rindex('-',0,f['id'].rindex('-'))]
+            else:
+                ddrid = f['id']
+            print('file {}. processing...'.format(ddrid))
+
+            if ddrid in entities_by_ddrid:
+                ent = entities_by_ddrid[ddrid]
                 identifier = ent['id']
                 interviewid = ''
                 creators_parsed = parseCreators(ent['creators'])
@@ -154,12 +181,16 @@ def doConvert(entcsv,filecsv):
                 isSegment = True if ent['format'] == 'vh' else False
                 if isSegment:
                     #get the interview id
-                    interviewid = entities_by_ddrid[f['id'][:f['id'].rfind('-')]]
+                    interviewid = entities_by_ddrid[ddrid[:ddrid.rfind('-')]]['id']
+                    print('interviewid: {}'.format(interviewid))
                     #get segment info
                     for s in entities_by_ddrid:
-                        if s.key.startsWith(interviewid):
-                            totalsegs +=1
-                    
+                        check = s[0:100]
+                        if check.startswith(interviewid):
+                           totalsegs +=1
+                    #must account for interview entity in entities_by_ddrid
+                    totalsegs -=1
+
                 filename = '{}-{}-{}{}'.format(ent['id'],f['role'],f['sha1'][:10],f['basename_orig'][f['basename_orig'].rfind('.'):])
                 #note this is the IA collection bucket; not the DDR collection
                 collection = interviewid if isSegment else 'Densho'
@@ -177,20 +208,46 @@ def doConvert(entcsv,filecsv):
                 credits = getCredits(creators_parsed)
                 runtime = ent['extent']
                 
-                print('Results: {}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n'.format(identifier,filename,collection,mediatype,description,title,contributor,creator,date,subject0,subject1,subject2,licenseurl,credits,runtime))
+                #write the row to csv
+                odatafile = open(outputfile,'a')
+                outputwriter = csv.writer(odatafile)
+                outputwriter.writerow([identifier,
+                                        filename,
+                                        collection,
+                                        mediatype,
+                                        description,
+                                        title,
+                                        contributor,
+                                        creator,
+                                        date,
+                                        subject0,
+                                        subject1,
+                                        subject2,
+                                        licenseurl,
+                                        credits,
+                                        runtime])
+                odatafile.close()
+
     return
 
 def main():
 
     parser = argparse.ArgumentParser(description=description, epilog=epilog,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('entitycsv', help='Absolute path to DDR entities csv file.')
-    parser.add_argument('filecsv', help='Absolute path to DDR files csv file.')
+    parser.add_argument('entitycsv', help='Path to DDR entities csv file.')
+    parser.add_argument('filecsv', help='Path to DDR files csv file.')
+    parser.add_argument('outputpath', nargs='?', default=os.getcwd(), help='Path to save output.')
+    parser.add_argument('binariespath', nargs='?', default=os.getcwd(), help='Path to original binaries for prep.')
+    parser.add_argument('-b', '--prep_binaries', action='store_true', dest='prep_binaries', help='Prep binaries for upload. Uses binariespath argument.')
 
     args = parser.parse_args()
     print('Entity csv path: {}'.format(args.entitycsv))
     print('File csv path: {}'.format(args.filecsv))
-    
+    print('Output path: {}'.format(args.outputpath))
+    print('Binaries path: {}'.format(args.binariespath))
+    if args.prep_binaries:
+        print('Prep binaries mode activated.')
+
     started = datetime.datetime.now()
     inputerrs = ''
     if not os.path.isfile(args.entitycsv):
@@ -200,7 +257,7 @@ def main():
     if inputerrs != '':
         print('Error -- script exiting...\n{}'.format(inputerrs))
     else:
-        doConvert(args.entitycsv,args.filecsv)
+        doConvert(args.entitycsv,args.filecsv,args.outputpath,args.prep_binaries)
     
     finished = datetime.datetime.now()
     elapsed = finished - started
