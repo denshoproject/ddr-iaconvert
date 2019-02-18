@@ -131,7 +131,7 @@ def getFirstFacility(rawfacilities):
     return facility
 
 
-def doConvert(entcsv,filecsv,outputpath,prep_binaries):
+def doConvert(entcsv,filecsv,outputpath,prep_binaries,binariespath):
     entdata = []
     load_data(entcsv,entdata)
     filedata = []
@@ -191,11 +191,19 @@ def doConvert(entcsv,filecsv,outputpath,prep_binaries):
                     #must account for interview entity in entities_by_ddrid
                     totalsegs -=1
 
-                filename = '{}-{}-{}{}'.format(ent['id'],f['role'],f['sha1'][:10],f['basename_orig'][f['basename_orig'].rfind('.'):])
+                filename = '{}-{}-{}{}'.format(identifier,f['role'],f['sha1'][:10],f['basename_orig'][f['basename_orig'].rfind('.'):])
+
+                if prep_binaries:
+                    origfile = os.path.join(binariespath,f['basename_orig'])
+                    if os.path.exists(origfile):
+                        shutil.copy2(origfile,os.path.join(outputpath,filename))
+                    else:
+                        print('{:%Y%m%d %H:%M:%S.%s}: Error - {} does not exist. Could not prep binary for {}.'.format(datetime.datetime.now(),origfile,identifier))
+ 
                 #note this is the IA collection bucket; not the DDR collection
                 collection = interviewid if isSegment else 'Densho'
                 mediatype = getMediaType(f['mimetype'])
-                description = getDescription(isSegment, ent['id'],ent['description'],ent['location'],ent['sort'],totalsegs)
+                description = getDescription(isSegment,identifier,ent['description'],ent['location'],ent['sort'],totalsegs)
                 title = ent['title']
                 contributor = ent['contributor']
                 creator = getCreators(creators_parsed)
@@ -238,7 +246,7 @@ def main():
     parser.add_argument('filecsv', help='Path to DDR files csv file.')
     parser.add_argument('outputpath', nargs='?', default=os.getcwd(), help='Path to save output.')
     parser.add_argument('binariespath', nargs='?', default=os.getcwd(), help='Path to original binaries for prep.')
-    parser.add_argument('-b', '--prep_binaries', action='store_true', dest='prep_binaries', help='Prep binaries for upload. Uses binariespath argument.')
+    parser.add_argument('-b', '--prep-binaries', action='store_true', dest='prep_binaries', help='Prep binaries for upload. Uses binariespath argument.')
 
     args = parser.parse_args()
     print('Entity csv path: {}'.format(args.entitycsv))
@@ -254,10 +262,14 @@ def main():
         inputerrs + 'Entities csv does not exist: {}\n'.format(args.entitycsv)
     if not os.path.isfile(args.filecsv):
         inputerrs + 'Files csv does not exist: {}'.format(args.filecsv)
+    if not os.path.exists(args.outputpath):
+        inputerrs + 'Output path does not exist: {}'.format(args.outputpath)
+    if not os.path.exists(args.binariespath):
+        inputerrs + 'Binaries path does not exist: {}'.format(args.binariespath)       
     if inputerrs != '':
         print('Error -- script exiting...\n{}'.format(inputerrs))
     else:
-        doConvert(args.entitycsv,args.filecsv,args.outputpath,args.prep_binaries)
+        doConvert(args.entitycsv,args.filecsv,args.outputpath,args.prep_binaries,args.binariespath)
     
     finished = datetime.datetime.now()
     elapsed = finished - started
