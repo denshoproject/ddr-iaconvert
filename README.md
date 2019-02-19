@@ -16,18 +16,22 @@ Compatible with Python 3 only. Requires `simplejson`, `jinja2` and `dateutil`.
 
 **Positional Arguments:**
 ```
-  entitycsv   Absolute path to DDR entities csv file.
-  filecsv     Absolute path to DDR files csv file.
+  entitycsv            Absolute path to DDR entities csv file.
+  filecsv              Absolute path to DDR files csv file.
+  outputpath           Path to save output.
+  binariespath         Path to original binaries for prep.
 ```
 
 **Optional Arguments:**
 ```
   -h, --help  show this help message and exit
+  -b, --prep-binaries  Prep binaries for upload. Uses binariespath argument.
 ```
 
 **Examples**:
 ```
-     $ ddr-iaconvert ./ddr-densho-1-entities.csv ./ddr-densho-1-files.csv
+  $ ddr-iaconvert.py ./ddr-densho-1-entities.csv ./ddr-densho-1-files.csv
+  $ ddr-iaconvert.py -b ./ddr-entities.csv ./ddr-files.csv ./output/ ./binaries-in/
 ```
 
 ### Notes and Tips
@@ -43,3 +47,10 @@ together segments and add other VH-related info to the IA metadata.
 3. In order to properly process VH materials, all segment entities and the 
 parent interview entity must be present in the input entities csv. In 
 addition, the `sort` attribute must contain the actual segment number. 
+
+4. The `id` column in the files input csv may contain either the 
+identifier of the file (e.g., `ddr-densho-1-2-master-400ff321a5`) or the 
+identifier of the parent entity (e.g., `ddr-densho-1-2`). In the former 
+case, the csv would have been generated with the `ddrexport` command; 
+the latter would be a csv used to batch ingest binaries with the 
+`ddrimport` command.

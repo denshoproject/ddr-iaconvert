@@ -12,17 +12,18 @@ Archive's (IA) command-line upload tool (https://github.com/jjjake/internetarchi
 The command examines a given directory of DDR binary files and associated metadata 
 CSV file that has been exported from the DDR system.
 EXAMPLE
-     $ ddr-iaconvert ./ddr-densho-1-entities.csv ./ddr-densho-1-files.csv
+  $ ddr-iaconvert.py ./ddr-densho-1-entities.csv ./ddr-densho-1-files.csv
+  $ ddr-iaconvert.py -b ./ddr-entities.csv ./ddr-files.csv ./output/ ./binaries-in/
 """
 
 """
-entities:
+entities_cols:
 id,status,public,title,description,creation,location,creators,language,genre,
 format,extent,contributor,alternate_id,digitize_person, digitize_organization,
 digitize_date,credit,topics,persons,facility,chronology,geography,parent,
 rights,rights_statement,notes,sort,signature_id
 
-files:
+files_cols:
 id,external,role,basename_orig,mimetype,public,rights,sort,thumb,label,
 digitize_person,tech_notes,external_urls,links,sha1,sha256,md5,size
 """
