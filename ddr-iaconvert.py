@@ -44,7 +44,7 @@ def load_data(csvpath,data):
 def build_dict(seq, key):
     return dict((d[key], dict(d, index=index)) for (index, d) in enumerate(seq))
 
-
+#Caution! segnumber and totalsegs should be strings!
 def generate_link_text(parentid,segnumber,totalsegs):
     prefix = parentid + '-'
     if totalsegs == '1':
@@ -73,6 +73,9 @@ def generate_link_text(parentid,segnumber,totalsegs):
     if prevlink != '' and nextlink != '':
         nextlink = "  --  " + nextlink
         
+    if prevlink != '' or nextlink != '':
+        nextlink = nextlink + "<p>"
+
     return prevlink + nextlink
 
 
@@ -95,7 +98,7 @@ def getDescription(isSegment,identifier,descrip,location,segnum,totalsegs):
     description = ''
     sequenceinfo = ''
     if isSegment:
-        sequenceinfo = 'Segment {} of {}<p>{}<p>'.format(segnum,str(totalsegs),generate_link_text(identifier[:identifier.rfind('-')],segnum,totalsegs))
+        sequenceinfo = 'Segment {} of {}<p>{}'.format(segnum,totalsegs,generate_link_text(identifier[:identifier.rfind('-')],segnum,totalsegs))
     locationinfo = 'Interview location: {}'.format(location) if isSegment else 'Location: {}'.format(location)
     denshoboilerplate = 'See this item in the <a href=\"https://ddr.densho.org/\" target=\"blank\" rel=\"nofollow\">Densho Digital Repository</a> at: <a href=\"https://ddr.densho.org/{}/\" target=\"_blank\" rel=\"nofollow\">https://ddr.densho.org/{}/</a>.'.format(identifier,identifier)
     description = locationinfo + '<p>' + descrip + '<p>' + sequenceinfo + denshoboilerplate
@@ -189,6 +192,7 @@ def doConvert(entcsv,filecsv,outputpath,prep_binaries,binariespath):
                         check = s[0:100]
                         if check.startswith(interviewid):
                            totalsegs +=1
+                           print('found a segment for {}. check={}. totalsegs={}'.format(interviewid,check,totalsegs))
                     #must account for interview entity in entities_by_ddrid
                     totalsegs -=1
 
@@ -204,7 +208,7 @@ def doConvert(entcsv,filecsv,outputpath,prep_binaries,binariespath):
                 #note this is the IA collection bucket; not the DDR collection
                 collection = interviewid if isSegment else 'Densho'
                 mediatype = getMediaType(f['mimetype'])
-                description = getDescription(isSegment,identifier,ent['description'],ent['location'],ent['sort'],totalsegs)
+                description = getDescription(isSegment,identifier,ent['description'],ent['location'],ent['sort'],str(totalsegs))
                 title = ent['title']
                 contributor = ent['contributor']
                 creator = getCreators(creators_parsed)
