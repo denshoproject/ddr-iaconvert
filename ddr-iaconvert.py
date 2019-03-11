@@ -34,6 +34,8 @@ import datetime
 import csv 
 import converters
 
+
+
 def load_data(csvpath,data):
     csvfile = open(csvpath, 'r')
     csvreader = csv.DictReader(csvfile)
@@ -206,7 +208,7 @@ def doConvert(entcsv,filecsv,outputpath,prep_binaries,binariespath):
                         print('{:%Y%m%d %H:%M:%S.%s}: Error - {} does not exist. Could not prep binary for {}.'.format(datetime.datetime.now(),origfile,identifier))
  
                 #note this is the IA collection bucket; not the DDR collection
-                collection = interviewid if isSegment else 'Densho'
+                collection = interviewid if isSegment else 'densho'
                 mediatype = getMediaType(f['mimetype'])
                 description = getDescription(isSegment,identifier,ent['description'],ent['location'],ent['sort'],str(totalsegs))
                 title = ent['title']
