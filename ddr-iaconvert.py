@@ -34,8 +34,6 @@ import datetime
 import csv 
 import converters
 
-
-
 def load_data(csvpath,data):
     csvfile = open(csvpath, 'r')
     csvreader = csv.DictReader(csvfile)
@@ -136,6 +134,11 @@ def getFirstFacility(rawfacilities):
         facility = facilitydata[0]['term']
     return facility
 
+def isExternal(external):
+    if (external == '1') or (external.lower() == 'true'):
+        return True
+    else:
+        return False
 
 def doConvert(entcsv,filecsv,outputpath,prep_binaries,binariespath):
     entdata = []
@@ -171,7 +174,8 @@ def doConvert(entcsv,filecsv,outputpath,prep_binaries,binariespath):
 
     #iterate through files
     for f in filedata:
-         if f['external'] == '1':
+        #TODO make logic understand multiple boolean forms
+         if isExternal(f['external']):
             if 'mezzanine' in f['id'] or 'master' in f['id'] or 'transcript' in f['id']:
                 ddrid = f['id'][:f['id'].rindex('-',0,f['id'].rindex('-'))]
             else:
