@@ -1,3 +1,5 @@
+**This project has been replaced by `DDR.cli.ddriaconvert`: https://github.com/denshoproject/ddr-cmdln/blob/develop/ddr/DDR/cli/ddriaconvert.py
+
 # ddr-iaconvert
 Converts DDR csv metadata into IA's cli upload csv format.
 
